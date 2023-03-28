@@ -1,9 +1,11 @@
+
+## src/audit_decorators.py
 import logging
 import functools
 import asyncio
 import os
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("logcleanaudit")
 
 class AuditBase:
     def __init_subclass__(cls, **kwargs):
@@ -30,9 +32,10 @@ def audit_init(cls):
     return cls
 
 def get_extra(func):
-    audit_func_path = f"{func.__module__}.{func.__qualname__}"
-    audit_filename = os.path.basename(func.__code__.co_filename)  # Añadir esta línea
-    audit_lineno = func.__code__.co_firstlineno  # Añadir esta línea
+    #audit_func_path = f"{func.__module__}.{func.__qualname__}" or ""
+    audit_filename = os.path.basename(func.__code__.co_filename) or ""
+    audit_lineno = func.__code__.co_firstlineno or ""
+    audit_func_path = f"{audit_filename}:{audit_lineno}"
     extra={"audit_func_path": audit_func_path, "audit_filename": audit_filename, "audit_lineno": audit_lineno}
     return extra
 
@@ -47,8 +50,7 @@ def audit(func):
             return result
         except Exception as e:
             logger.exception(f"Exception in {func.__module__}.{func.__qualname__}: {e}")
-            raise
-
+            raise e
     return wrapper
 
 def audit_async(func):
@@ -62,8 +64,7 @@ def audit_async(func):
             return result
         except Exception as e:
             logger.exception(f"Exception in {func.__module__}.{func.__qualname__}: {e}")
-            raise
-
+            raise e
     return wrapper
 
 def audit_async_task(func):
@@ -73,10 +74,9 @@ def audit_async_task(func):
             extra = get_extra(func)
             logger.debug(f"{func.__module__}.{func.__qualname__} called with args: {args}, kwargs: {kwargs}", extra=extra)
             result = await asyncio.create_task(func(*args, **kwargs))
-            logger.debug(f"{func.__module__}.{func.__qualname__} returned: {result}")
+            logger.debug(f"{func.__module__}.{func.__qualname__} returned: {result}", extra=extra)
             return result
         except Exception as e:
             logger.exception(f"Exception in {func.__module__}.{func.__qualname__}: {e}", extra=extra)
-            raise
-
+            raise e
     return wrapper
